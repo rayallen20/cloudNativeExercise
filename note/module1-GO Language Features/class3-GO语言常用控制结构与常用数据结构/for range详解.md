@@ -1,5 +1,7 @@
 # for range详解
 
+[参考文献:《GO语言设计与实现第五章--for和range部分》](https://draveness.me/golang/docs/part2-foundation/ch05-keyword/golang-for-range/)
+
 ## 1. for和range
 
 下面是一段经典三段式循环代码:
