@@ -79,9 +79,7 @@ Collector:垃圾回收器,回收内存空间.Mutator只需申请,不需释放.�
 
 ### 2.1 TCMalloc概览
 
-TODO:补链接
-
-[TCMalloc概览]()
+[TCMalloc概览](https://github.com/rayallen20/cloudNativeExercise/blob/master/note/module2-Write%20the%20GO%20program/class3-GO%E8%AF%AD%E8%A8%80%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/extend/TCMalloc%E5%86%85%E5%AD%98%E5%88%86%E9%85%8D%E7%AE%97%E6%B3%95.md)
 
 - page:内存页.一块8K大小的内存空间.Go与操作系统之间的内存申请和释放,都是以page为单位的
 - span:内存块.一个或多个连续的page组成一个span
@@ -100,9 +98,7 @@ TODO:补链接
 
 ### 2.2 GO语言内存分配
 
-TODO:补链接
-
-[GO语言内存分配概览]()
+[GO语言内存分配概览](https://github.com/rayallen20/cloudNativeExercise/blob/master/note/module2-Write%20the%20GO%20program/class3-GO%E8%AF%AD%E8%A8%80%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86/extend/GO%E8%AF%AD%E8%A8%80%E5%86%85%E5%AD%98%E5%88%86%E9%85%8D%E7%AE%97%E6%B3%95.md)
 
 GO语言的内存分配和TCMalloc基本一致.分级是一致的.1个size class对应2个span class.其中1个span class用来存指针,另一个用来存直接引用的.这样设计的目的是为了便于GC.如果存的是直接引用,是不需要GC的.因为主对象消失了,附属对象就跟着消失了.因此GC时只需要扫描存指针的那个链表(span class)即可.因此做了这样一个区分.
 
