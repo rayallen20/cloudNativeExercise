@@ -1,15 +1,5 @@
 # class5 HTTP Server编写
 
-1. 理解网络协议层
-2. 理解Socket
-3. 理解net.http包
-4. 阻塞IO模型
-5. 非阻塞IO模型
-6. 异步IO
-7. IO多路复用
-8. Linux epoll
-9. GO语言高性能http server的实现细节
-
 ## PART1. 通信基础
 
 ### 1.1 网络协议层
