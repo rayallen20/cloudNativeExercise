@@ -90,9 +90,7 @@ Question:如果你要设计一套客户端-服务器通信系统,有哪些通信
 
 ![Linux epoll模型](./img/Linux epoll模型.jpg)
 
-TODO:补链接
-
-[请求处理方式与事件驱动模型]()
+[请求处理方式与事件驱动模型](https://github.com/rayallen20/cloudNativeExercise/blob/master/note/module2-Write%20the%20GO%20program/class5-HTTP%20Server%E7%BC%96%E5%86%99/extend/%E8%AF%B7%E6%B1%82%E5%A4%84%E7%90%86%E6%96%B9%E5%BC%8F%E4%B8%8E%E4%BA%8B%E4%BB%B6%E9%A9%B1%E5%8A%A8%E6%A8%A1%E5%9E%8B.md)
 
 ## PART2. GO语言高性能httpserver的实现细节
 
@@ -107,5 +105,7 @@ TODO:补链接
 ![GO语言高性能httpserver实现细节](./img/GO语言高性能httpserver实现细节.jpg)
 
 ### 2.2 代码实现细节
+
+TODO:模块完成后把它加到TODO List中
 
 [httpserver代码实现](https://cncamp.notion.site/http-server-socket-detail-e1f350d63c7c4d9f86ce140949bd90c2)
