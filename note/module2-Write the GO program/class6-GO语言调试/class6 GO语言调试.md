@@ -292,7 +292,7 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 	- 这一步需要注意,一定要先开启测试再生成火焰图,否则会报错
 
 - step5. 查看火焰图
-	- TODO:补链接
+	- ![火焰图](./img/789.svg)
 
 火焰图的含义:
 
