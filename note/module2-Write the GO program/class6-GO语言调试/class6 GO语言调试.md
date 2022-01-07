@@ -73,17 +73,21 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 ```
 
 - step1. 打断点
+
 	![打断点](./img/打断点.png)
 
 - step2. 以debug模式运行
+
 	![以debug模式运行](./img/以debug模式运行.png)
 
 - step3. 运行程序
 
 	此处由于示例是一个httpserver,所以要去浏览器请求http://localhost:8085/shit.此时程序会停止在断点上
+	
 	![程序停止于断点](./img/程序停止于断点.png)
 
 - step4. 查看本地变量的情况
+
 	![查看本地变量的情况](./img/查看本地变量的情况.png)
 
 ## PART2. 日志的使用
