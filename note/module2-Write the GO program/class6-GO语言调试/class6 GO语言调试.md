@@ -1,12 +1,5 @@
 # class6 GO语言调试
 
-1. debug工具
-2. dlv
-3. 日志框架
-4. 性能分析
-5. 针对http服务的pprof
-6. pprof结果分析
-
 ## PART1. debug工具的选择与使用
 
 ### 1.1 debug工具的选择
