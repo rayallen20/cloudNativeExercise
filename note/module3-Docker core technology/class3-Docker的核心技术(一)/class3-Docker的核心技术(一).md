@@ -1,28 +1,4 @@
 # class3:Docker的核心技术(一)
-	
-3. Cgroup概念
-
-	3.1 Linux内核代码中Cgroup的实现
-	
-	3.2 可配额/可度量-Control Groups
-	
-4. CPU子系统
-
-	4.1 Linux调度器原理
-	
-	4.2 CFS调度器原理
-	
-	4.3 vruntime红黑树特性
-	
-	4.4 CFS进程调度
-	
-	4.5 CPU子系统练习
-
-	4.6 cpuacct子系统
-	
-	4.7 Memory子系统
-	
-	4.8 Cgroup dirver
 
 ## PART1. 容器主要特性
 
