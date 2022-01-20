@@ -82,36 +82,36 @@ root           1       0  0 Jan17 ?        00:00:07 /sbin/init maybe-ubiquity
 	
 	```
 	root@docker-test:/home/roach# pstree
-systemd─┬─accounts-daemon───2*[{accounts-daemon}]
-        ├─agetty
-        ├─atd
-        ├─containerd───8*[{containerd}]
-        ├─containerd-shim─┬─mysqld───36*[{mysqld}]
-        │                 └─10*[{containerd-shim}]
-        ├─containerd-shim─┬─python
-        │                 └─10*[{containerd-shim}]
-        ├─cron
-        ├─dbus-daemon
-        ├─dockerd─┬─docker-proxy───4*[{docker-proxy}]
-        │         ├─docker-proxy───6*[{docker-proxy}]
-        │         └─10*[{dockerd}]
-        ├─multipathd───6*[{multipathd}]
-        ├─networkd-dispat
-        ├─polkitd───2*[{polkitd}]
-        ├─rsyslogd───3*[{rsyslogd}]
-        ├─snapd───9*[{snapd}]
-        ├─sshd───sshd───sshd───bash───sudo───bash───pstree
-        ├─systemd───(sd-pam)
-        ├─systemd-journal
-        ├─systemd-logind
-        ├─systemd-network
-        ├─systemd-resolve
-        ├─systemd-timesyn───{systemd-timesyn}
-        ├─systemd-udevd
-        ├─udisksd───4*[{udisksd}]
-        ├─unattended-upgr───{unattended-upgr}
-        ├─upowerd───2*[{upowerd}]
-        └─vsftpd
+	systemd─┬─accounts-daemon───2*[{accounts-daemon}]
+	        ├─agetty
+	        ├─atd
+	        ├─containerd───8*[{containerd}]
+	        ├─containerd-shim─┬─mysqld───36*[{mysqld}]
+	        │                 └─10*[{containerd-shim}]
+	        ├─containerd-shim─┬─python
+	        │                 └─10*[{containerd-shim}]
+	        ├─cron
+	        ├─dbus-daemon
+	        ├─dockerd─┬─docker-proxy───4*[{docker-proxy}]
+	        │         ├─docker-proxy───6*[{docker-proxy}]
+	        │         └─10*[{dockerd}]
+	        ├─multipathd───6*[{multipathd}]
+	        ├─networkd-dispat
+	        ├─polkitd───2*[{polkitd}]
+	        ├─rsyslogd───3*[{rsyslogd}]
+	        ├─snapd───9*[{snapd}]
+	        ├─sshd───sshd───sshd───bash───sudo───bash───pstree
+	        ├─systemd───(sd-pam)
+	        ├─systemd-journal
+	        ├─systemd-logind
+	        ├─systemd-network
+	        ├─systemd-resolve
+	        ├─systemd-timesyn───{systemd-timesyn}
+	        ├─systemd-udevd
+	        ├─udisksd───4*[{udisksd}]
+	        ├─unattended-upgr───{unattended-upgr}
+	        ├─upowerd───2*[{upowerd}]
+	        └─vsftpd
 	```
 	
 	当某个进程被`systemd`进程`fork`出来时(此处只是以`systemd`创建其他进程为例),`fork()`函数会自动将`systemd`进程的Namespace复制到新的进程上.
