@@ -74,8 +74,8 @@ struct nsproxy {
 	
 	```
 	root@docker-test:/home/roach# ps -ef
-UID          PID    PPID  C STIME TTY          TIME CMD
-root           1       0  0 Jan17 ?        00:00:07 /sbin/init maybe-ubiquity
+	UID          PID    PPID  C STIME TTY          TIME CMD
+	root           1       0  0 Jan17 ?        00:00:07 /sbin/init maybe-ubiquity
 	```
 	
 	Linux中的进程都是树状的.所有的进程都是通过其他进程`fork`出来的.
