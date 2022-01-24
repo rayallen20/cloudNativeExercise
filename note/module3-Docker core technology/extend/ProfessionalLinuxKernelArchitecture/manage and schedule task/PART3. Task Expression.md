@@ -609,3 +609,286 @@ static struct user_namespace *clone_user_ns(struct user_namespace *old_ns)
 ```
 
 `alloc_uid`是一个辅助函数,对当前命名空间中给定UID的一个用户,若该用户没有对应的`user_struct`实例,则分配一个新的实例.在为root和当前用户分别设置了`user_struct`实例后, `switch_uid`确保从现在开始将新的`user_struct`实例用于资源统计.本质上就是将`struct task_struct`的`user`字段指向新的`user_struct`实例.
+
+## 3.3 进程ID号
+
+UNIX进程总是会分配一个号码用于在其命名空间中唯一地标识它们.该号码被称作进程ID号,简称PID.用`fork`或`clone`产生的每个进程,都由内核自动地分配一个新的唯一PID值.
+
+### 3.3.1 进程ID
+
+每个进程除PID这个特征值外,还有其他ID:
+
+- 处于某个线程组(进程调用[`clone`](https://github.com/torvalds/linux/blob/v2.6.24/arch/um/include/kern.h#L18)以便建立该进程的不同执行上下文时,`flag`实参值为[`CLONE_THREAD`](https://github.com/torvalds/linux/blob/v2.6.24/include/linux/sched.h#L15))中的所有进程都有统一的**线程组ID(TGID 即`task_struct`的`tgid`字段)**.如果进程没有使用线程,则其PID和TGID相同.
+
+	- 线程组中的主进程被称为组长(group leader).通过`clone`创建的所有线程的`task_struct`的`group_leader`字段值都会指向组长的`task_struct`实例.
+
+- 另外,独立进程可以合并成**进程组**(使用`setpgrp`系统调用).进程组成员的`task_struct`的`pgrp`属性值都是相同的,即进程组组长的PID,即`task_struct->signal->__pgrp`.进程组简化了向组的所有成员发送信号的操作,这对于各种系统程序设计方面及其有用.注意:用管道连接的进程包含在同一个进程组中.
+- 几个进程组可以合并成一个会话.会话中的所有进程都有同样的会话ID,保存在`task_struct->signal->__session`中.SID可以使用`setsid`系统调用设置.该值可以用于终端程序设计.
+
+命名空间增加了PID管理的复杂性.[`pid_namespace`](https://github.com/torvalds/linux/blob/v2.6.24/include/linux/pid_namespace.h#L17)按层次组织.可以看到`pid_namespace`中有一个字段`struct pid_namespace *parent;`.说明`pid_namespace`是有父子层级关系的.
+
+```c
+struct pid_namespace {
+	struct kref kref;
+	struct pidmap pidmap[PIDMAP_ENTRIES];
+	int last_pid;
+	struct task_struct *child_reaper;
+	struct kmem_cache *pid_cachep;
+	int level;
+	struct pid_namespace *parent;
+#ifdef CONFIG_PROC_FS
+	struct vfsmount *proc_mnt;
+#endif
+};
+```
+
+在建立一个新的命名空间时,该命名空间中的所有PID对父命名空间都是可见的,但子命名空间无法看到父命名空间的PID.于是就会出现一种情况:同样的1个进程,有多个PID.凡是可以看到该进程的命名空间,都要为该进程分配一个PID.这必须反映在数据结构上.因此要区分局部ID和全局ID(此处的ID不特指PID,还有UID等其他ID).
+
+- 全局ID:在内核本身和初始命名空间中的唯一ID号,在系统启动期间开始的`init`进程即属于初始命名空间.对每个ID类型,都有一个给定的全局ID,保证其值在整个系统中唯一
+- 局部ID:属于某个特定的命名空间,不具备全局有效性.对每个ID类型,他们在所属的命名空间内有效,但类型相同且值也相同的ID可能出现在不同的命名空间中.也就是说局部ID不具有唯一性
+
+全局PID和TGID直接保存在`task_struct`中:
+
+```c
+struct task_struct {
+...
+	pid_t pid;
+	pid_t tgid;
+...
+}
+```
+
+这2个字段的类型都是[`pid_t`](https://github.com/torvalds/linux/blob/v2.6.24/include/linux/types.h#L24).
+
+```c
+typedef __kernel_pid_t		pid_t;
+```
+
+其中`__kernel_pid_t`由各个体系结构分别定义.通常定义为`int`,也就是可以同时使用2^32个不同的ID值.
+
+会话和进程组ID不是直接包含在`task_struct`本身,而是保存在用于信号处理的结构中.[`task_struct->signal->__session`](https://github.com/torvalds/linux/blob/v2.6.24/include/linux/sched.h#L452)表示全局SID,[`task_struct->signal__prgp`](https://github.com/torvalds/linux/blob/v2.6.24/include/linux/sched.h#L445)表示全局PGID.
+
+```c
+static inline void set_task_session(struct task_struct *tsk, pid_t session)
+{
+	tsk->signal->__session = session;
+}
+
+static inline void set_task_pgrp(struct task_struct *tsk, pid_t pgrp)
+{
+	tsk->signal->__pgrp = pgrp;
+}
+```
+
+### 3.3.2 管理PID
+
+除了这2个字段外,内核还需要一个办法,用于管理所有命名空间内部的局部量,以及其他ID(比如TID,SID)等.这需要几个相互连接的数据结构,以及许多辅助函数.
+
+##### a. 数据结构
+
+此处我们用ID指代**任何**进程ID.在必要情况下会明确说明ID类型(例如:TGID,即线程组ID).
+
+一个小型的子系统称之为**PID分配器(pid allocator)**,这个子系统用于新ID的分配.除此之外,内核还需要提供辅助函数,以便实现通过ID及其类型查找`task_struct`的功能,以及将ID的内核表示形式和用户空间可见的数值进行转换的功能.
+
+我们先来看`pid_namespace`的表示方式:
+
+```c
+struct pid_namespace {
+...
+	struct task_struct *child_reaper;
+...
+	int level;
+	struct pid_namespace *parent;
+...
+};
+```
+
+实际上PID分配器也需要依靠该结构的某些部分来连续生成唯一ID,但我们暂时不关注这一点.
+
+- 每个`pid_namesapce`都具有一个进程,该进程的作用相当于全局的`init`进程.`init`的一个目的是对孤儿进程(即:其父进程执行完成或被终止后仍继续运行的一类进程.为避免孤儿进程退出时无法释放所占用的资源而僵死,任何孤儿进程产生时都会立即为系统进程`init`或`systemd`自动接收为子进程,这一过程也被称为"收养"(re-parenting).虽然事实上该进程已有`init`作为其父进程,但由于创建该进程的进程已不存在,所以仍应称之为"孤儿进程".)调用`wait4`,命名空间局部的`init`变体也必须完成该工作.`child_reaper`字段保存了指向该进程的`task_struct`指针.
+- `parent`是指向父命名空间的指针
+- `level`表示当前命名空间在命名空间层次结构中的深度.初始命名空间的`level`为0,初始命名空间的子空间`level`为1,下一层的子空间`level`为2,以此类推.`level`的计算很重要,因为`level`值较大的命名空间中的ID,对`level`值较小的命名空间来讲是课件的.内核从给定的`level`值即可推断进程会关联多少个ID
+
+PID的管理围绕2个数据结构展开:[`struct_pid`](https://github.com/torvalds/linux/blob/v2.6.24/include/linux/pid.h#L57)是内核对PID的内部表示,[`struct upid`](https://github.com/torvalds/linux/blob/v2.6.24/include/linux/pid.h#L50)则表示特定的命名空间中可见的信息.
+
+`upid`:特定的命名空间中可见的信息
+
+```c
+struct upid {
+	int nr;
+	struct pid_namespace *ns;
+	struct hlist_node pid_chain;
+};
+```
+
+`struct upid`:表示特定的命名空间中可见的信息
+
+- 字段`nr`表示ID的数值
+- 字段`ns`指向该ID所属的命名空间的指针
+- 字段`pid_chain`是用内核的标准方法实现了散列溢出链表
+
+所有的`upid`实例都保存在一个散列表中,后边会看到这个结构.
+
+`pid`:内核对PID的表示
+
+```c
+struct pid
+{
+	atomic_t count;
+	/* 使用该pid的进程的列表 */
+	struct hlist_head tasks[PIDTYPE_MAX];
+	struct rcu_head rcu;
+	int level;
+	struct upid numbers[1];
+};
+```
+
+`struct_pid`:
+
+- 字段`count`是一个引用计数器
+- 字段`tasks`是一个数组,每个数组项都是一个散列表头,对应于一个ID类型.这样设计的原因:1个ID可能用于几个进程.所有共享同一给定ID的`task_struct`实例,都通过该表连接起来.[`PIDTYPE_MAX`](https://github.com/torvalds/linux/blob/v2.6.24/include/linux/pid.h#L11)表示ID类型的数量.
+
+```c
+enum pid_type
+{
+	PIDTYPE_PID,
+	PIDTYPE_PGID,
+	PIDTYPE_SID,
+	PIDTYPE_MAX
+};
+```
+
+![实现可感知命名空间的ID表示所用的数据结构](./img/实现可感知命名空间的ID表示所用的数据结构.jpg)
+
+注意:枚举类型`pid_type`中定义的ID类型**不包括**线程组ID.这是因为线程组ID就是线程组组长的PID,因此没有必要再单独定义一项.
+
+- 字段`level`表示可以看到该进程的命名空间的数量(即:包含该进程的命名空间,在命名空间层次结构中的深度.我自己觉得这句话更好理解).一个进程可能在多个命名空间中可见,而该进程在各个命名空间中的局部ID各不相同.
+- `numbers`是一个`upid`实例的数组,每个数组项都对应一个命名空间.注意该数组形式上只有1个数组项,如果1个进程只包含在全局命名空间中,那这个设计没问题.但是由于该数组位于结构的末尾,因此只要分配更多的内存空间吗,即可向数组添加额外的项
+
+由于所有共享同一ID的`task_struct`实例都按进程存储在一个散列表中,因此需要在`struct task_struct`中增加一个散列表元素:
+
+```c
+struct task_struct {
+...
+	/* PID与PID散列表的联系 */
+	struct pid_link pids[PIDTYPE_MAX];
+...
+}
+```
+
+辅助结构[`pid_link`](https://github.com/torvalds/linux/blob/v2.6.24/include/linux/pid.h#L69)可以将`task_struct`连接到表头在`struct pid`中的散列表上:
+
+```c
+struct pid_link
+{
+	struct hlist_node node;
+	struct pid *pid;
+};
+```
+
+- `pid`字段指向进程所属的`pid`结构实例
+- `node`:散列表元素
+
+为了在给定的命名空间中查找对应指定PID数值的`pid`结构体实例,使用了一个散列表[`hlist_head`](https://github.com/torvalds/linux/blob/v2.6.24/kernel/pid.c#L41)
+
+```c
+static struct hlist_head *pid_hash;
+```
+
+`hlist_head`是一个内核的标准数据结构,用于建立双链散列表.
+
+`pid_hash`用作一个`hlist_head`数组.数组的元素数量取决于计算机的内存配置,大约在2^4=16到2^12=4096之间.[`pidhash_init`](https://github.com/torvalds/linux/blob/v2.6.24/kernel/pid.c#L669)用于计算恰当的容量并分配所需内存.
+
+```c
+void __init pidhash_init(void)
+{
+	int i, pidhash_size;
+	unsigned long megabytes = nr_kernel_pages >> (20 - PAGE_SHIFT);
+
+	pidhash_shift = max(4, fls(megabytes * 4));
+	pidhash_shift = min(12, pidhash_shift);
+	pidhash_size = 1 << pidhash_shift;
+
+	printk("PID hash table entries: %d (order: %d, %Zd bytes)\n",
+		pidhash_size, pidhash_shift,
+		pidhash_size * sizeof(struct hlist_head));
+
+	pid_hash = alloc_bootmem(pidhash_size *	sizeof(*(pid_hash)));
+	if (!pid_hash)
+		panic("Could not alloc pidhash!\n");
+	for (i = 0; i < pidhash_size; i++)
+		INIT_HLIST_HEAD(&pid_hash[i]);
+}
+```
+
+假如已经分配了`struct pid`的一个新实例,并设置了给定的ID类型.则该`pid`的实例会[如下](https://github.com/torvalds/linux/blob/v2.6.24/kernel/pid.c#L320)附加到`task_struct`上:
+
+```c
+int fastcall attach_pid(struct task_struct *task, enum pid_type type,
+		struct pid *pid)
+{
+	struct pid_link *link;
+
+	link = &task->pids[type];
+	link->pid = pid;
+	hlist_add_head_rcu(&link->node, &pid->tasks[type]);
+
+	return 0;
+}
+```
+
+此处建立了`task_struct`实例和`pid`实例的双向链接:
+
+- `task_struct`可以通过`task_struct->pids[type]->pid`访问`pid`实例
+- `pid`实例可以遍历散列表`tasks[type]`从而找到`task_struct`
+
+`hlist_add_head_rcu`是遍历散列表的标准函数,此外还确保了遵守RCU机制(RCU:Read-Copy Update,是Linux中比较重要的一种同步机制.就是"读,拷贝更新".再直白点讲就是"随意读,但更新数据的时需要先复制一份副本,在副本上完成修改,再一次性地替换旧数据".这是Linux内核实现的一种针对"读多写少"的共享数据的同步机制).
+
+因为在其他内核组件并发地操作散列表时,可防止竟态条件(race condition)出现.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
