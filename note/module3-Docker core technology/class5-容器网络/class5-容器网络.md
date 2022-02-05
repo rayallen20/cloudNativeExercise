@@ -334,4 +334,4 @@ Kubernetes中的网络插件Flannel支持Overlay模式
 - 同一主机内的Pod可以使用网桥进行通信
 - 不同主机上的Pod将通过flanneld将其流量封装在UDP数据包中
 
-![flannel](./img/flannel.jpg)
+![Flannel](./img/Flannel.jpg)
