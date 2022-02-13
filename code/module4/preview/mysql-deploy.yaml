@@ -1,0 +1,33 @@
+# API版本
+apiVersion: apps/v1
+# 副本控制器Deployment
+kind: Deployment
+metadata:
+  # 标签
+  labels:
+    app: mysql
+  # 对象名称 全局唯一
+  name: mysql
+spec:
+  # 预期的副本数量
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  # Pod模板
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      # 定义容器
+      containers:
+        - image: mysql:5.7
+          name: mysql
+          ports:
+          # 容器应用监听的端口号
+          - containerPort: 3306
+          # 注入容器内的环境变量
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: "123456"
