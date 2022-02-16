@@ -1245,7 +1245,7 @@ API Server是唯一和etcd通信的组件.etcd是一个分布式K-V存储服务.
 		
 		ReplicaSet对象同样经过认证、鉴权、准入的步骤后,被存储至了etcd.之后ReplicaSet Controller会Watch APIServer,监听ReplicaSet对象.当ReplicaSet Controller监听到ReplicaSet对象被创建后,同样会去解析该ReplicaSet对象.通过解析得知副本数量、Pod模板等信息后,ReplicaSet Controller就可以完成Pod的创建了.
 		
-		创建Pod这一操作同样也作为一个请求被发送到了APIServer.该Pod在创建时没有经过调度,
+		创建Pod这一操作同样也作为一个请求被发送到了APIServer.该Pod在创建时没有经过调度.
 		
 	
 		```
