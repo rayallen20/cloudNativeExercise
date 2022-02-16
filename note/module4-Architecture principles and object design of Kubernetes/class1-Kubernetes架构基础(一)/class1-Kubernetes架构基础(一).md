@@ -134,6 +134,8 @@ Borg的服务发现通过BNS(Borg Name Service)来实现.
 - `jfoo`:表示Job名
 - `50`:表示当前服务是Job中的第几个Task
 
+我理解Naming就是Kubernetes中的Service.
+
 在Borg上运行的每一个服务,都可以通过Naming服务来暴露其域名,以便集群外部的流量来访问该服务.在微服务架构下,Micro Service A和Micro Service B之间,就可以通过这种Naming Service来完成微服务之间的调用.
 
 综上所述,Borg其实隐含了3层含义:
